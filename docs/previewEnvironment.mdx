@@ -1,0 +1,17 @@
+---
+sidebar_position: 3
+---
+
+# Preview Environment
+## Enable Preview Environments
+![Enable Preview Environment](/img/preview-environment/enable-preview-environment.png)
+
+After enabling Preview Environments, Starliner will automatically deploy your application with the latest changes when you open a Pull Request.
+It will also automatically delete the environment when the Pull Request is closed.
+
+## Template Strings
+As the ingress hosts will change for every preview environment, you need a way to dynamically reference other services at runtime.
+Starliner supports **template strings** for this purpose.
+
+### Example
+`${ingress-8e6652c7.hosts[0].host}` references the first host specified in the ingress with deployment name `ingress-8e6652c7`.

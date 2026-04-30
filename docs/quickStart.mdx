@@ -1,0 +1,41 @@
+---
+sidebar_position: 1
+---
+
+# Quick start
+Starliner is a deployment platform that lets you easily deploy your application to the public cloud. (We only support Hetzner Cloud for the moment).
+In the following we will provide a quick guide on how to get started with the platform.
+
+To demonstrate deploying directly from a Github repository through Starliner's dashboard, this guide will use a fork of DocuSeal.
+
+To get started deploying your application, first create a new project:
+1. Open the [Dashboard](https://starliner.app) → Click **New Project**
+1. Provide your project with a name, assign it to a team and the cluster it should be deployed to. *Please note that the team and cluster can't be changed once the project has been created.*
+
+We're going to start off by deploying a PostgreSQL database.
+1. Give the database a name (e.g. `database` in the screenshot below) and click on deploy.
+   ![Deploy Database](/img/quickstart/deploy-database.png)
+1. A node should appear on your canvas, with all the necessary details.
+   ![Deploy Database](/img/quickstart/deploy-database-done.png)
+
+Next, we're going to deploy the DocuSeal application.
+1. Give the docuseal application a name (e.g. `app` in the screenshot below)
+1. Select the `docuseal` repository from the dropdown and provide the path to the project directory and Dockerfile. In the example below `./` refers to the repository's top level directory.
+1. Set the port to `3000`.
+1. Fill in the required environment variables. Starliner will automatically prefill the environment variables specified in the `.env.example` file in the project directory. You can read off the values from the database node.
+1. Click on Deploy.
+   ![Deploy DocuSeal](/img/quickstart/deploy-docuseal.png)
+
+Starliner will now automatically build the Dockerfile and push it to our internal container registry. You can view the logs of the build process under the "Builds" tab.
+![Build Logs](/img/quickstart/build-docuseal-image.png)
+
+As a last step, we will deploy an ingress to make our service accessible from the internet.
+1. Fill in the ingress config.
+1. If you don’t have a custom domain yet, you can use a temporary nip.io domain based on your server IP, for example:
+   `<server-ip>.nip.io` This resolves automatically to your server IP and allows Starliner to configure ingress without requiring DNS setup.
+1. Click on Deploy.
+![App Ingress](/img/quickstart/deploy-app-ingress.png)
+![App Ingress](/img/quickstart/deploy-app-ingress-done.png)
+
+We can now access the deployed web application via the specified host:
+![App Ingress](/img/quickstart/docuseal-deployed.png)
