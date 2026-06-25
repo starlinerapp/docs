@@ -141,7 +141,7 @@ For dashboard setup steps, see [self-hosted runners](/user-manual/custom-runners
     Admin->>Runner: runner register --token
     Runner->>Dashboard: POST /api/runners/register
     Dashboard-->>Runner: 201 Created
-  Note over Runner: credentials.json saved locally
+  Note over Runner: registration.json saved locally
     Admin->>Runner: systemctl start starliner-runner
     Runner->>Builder: gRPC StreamHeartbeats
     loop Every ~5s
@@ -156,7 +156,7 @@ For dashboard setup steps, see [self-hosted runners](/user-manual/custom-runners
 
 ### Phase 1: Configure the control plane URL
 
-`runner install --baseUrl <url>` normalizes and saves the Starliner instance URL to `config.json` under the runner's installed assets directory. Every later HTTP and gRPC call uses this URL to reach Starliner.
+`runner install --baseUrl <url>` normalizes and saves the Starliner instance URL to `/usr/local/share/runner/config.json`. Every later HTTP and gRPC call uses this URL to reach Starliner.
 
 The URL must use `http` or `https` and include a host. For `https://starliner.app`, gRPC connects to the same host on port 443.
 
@@ -181,7 +181,7 @@ The registration token is generated in the dashboard (**Settings → Cluster →
 1. Marks the token as used and binds the runner record with the name, labels, and concurrency limit you provided
 2. Associates the runner with your organization (or registers it as a global runner for cluster-wide builds)
 
-The runner saves the token locally in `credentials.json` (mode `0600`). The same token is reused as the long-lived credential for all subsequent gRPC calls — it is sent in the `authorization` metadata header on every request.
+The runner saves the token locally in `/root/.cache/runner/registration.json` (mode `0600`) when running under systemd. The same token is reused as the long-lived credential for all subsequent gRPC calls — it is sent in the `authorization` metadata header on every request.
 
 `runner register` prompts for `name` and `max-concurrent-jobs` if not passed as flags. Defaults are the `self-hosted` label and a concurrency limit of `1`.
 
@@ -243,10 +243,21 @@ The selected job payload includes everything needed to build and push the image:
 
 ### Local state
 
-| File | Location | Contents |
-| ---- | -------- | -------- |
-| `config.json` | Runner assets directory | `base_url` set during `install` |
-| `registration.json` | Runner state directory | Registration token, name, and `maxConcurrentJobs` |
+The runner stores install artifacts and runtime state in two directories:
+
+| Directory | Path | Purpose |
+| --------- | ---- | ------- |
+| Assets | `/usr/local/share/runner` | VM images (`vmlinux`, `initrd`, `rootfs.ext4`, `boot.args`) and `config.json` written during `install` |
+| State | `$HOME/.cache/runner` | Registration data, VM registry, and per-VM workspaces |
+
+When the runner runs as a systemd service, `HOME` is set to `/root`, so the state directory is `/root/.cache/runner`.
+
+| File | Path | Contents |
+| ---- | ---- | -------- |
+| `config.json` | `/usr/local/share/runner/config.json` | `base_url` set during `install` |
+| `registration.json` | `$HOME/.cache/runner/registration.json` | Registration token, name, and `maxConcurrentJobs` |
+| `vms.json` | `$HOME/.cache/runner/vms.json` | VM registry metadata |
+| VM workspace | `$HOME/.cache/runner/vms/<id>/` | Firecracker config, sockets, and logs for each microVM |
 
 ### Network requirements
 

@@ -22,7 +22,10 @@ const sidebars: SidebarsConfig = {
         type: 'doc',
         id: 'user-manual/custom-runners/index',
       },
-      items: ['user-manual/custom-runners/self-hosted-runners'],
+      items: [
+        'user-manual/custom-runners/self-hosted-runners',
+        'user-manual/custom-runners/global-runners',
+      ],
     },
   ],
   developerGuideSidebar: [
