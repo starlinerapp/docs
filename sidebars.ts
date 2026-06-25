@@ -1,27 +1,30 @@
 import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 
-// This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
-
-/**
- * Creating a sidebar enables you to:
- - create an ordered group of docs
- - render a sidebar for each doc of that group
- - provide next/previous navigation
-
- The sidebars can be generated from the filesystem, or explicitly defined here.
-
- Create as many sidebars as you want.
- */
 const sidebars: SidebarsConfig = {
-  tutorialSidebar: [
+  userManualSidebar: [
     {
       type: 'category',
       label: 'Getting Started',
       link: {
         type: 'doc',
-        id: 'gettingStarted',
+        id: 'user-manual/getting-started/index',
       },
-      items: ['deployYourFirstApplication', 'cloningEnvironment', 'previewEnvironment'],
+      items: [
+        'user-manual/getting-started/deploy-your-first-application',
+        'user-manual/getting-started/cloning-existing-environment',
+        'user-manual/getting-started/preview-environments',
+      ],
+    },
+  ],
+  developerGuideSidebar: [
+    {
+      type: 'category',
+      label: 'Developer Guide',
+      link: {
+        type: 'doc',
+        id: 'developer-guide/index',
+      },
+      items: ['developer-guide/self-hosted-runners'],
     },
   ],
 };

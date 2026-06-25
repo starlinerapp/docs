@@ -68,9 +68,15 @@ const config: Config = {
       items: [
         {
           type: 'docSidebar',
-          sidebarId: 'tutorialSidebar',
+          sidebarId: 'userManualSidebar',
           position: 'left',
           label: 'User Manual',
+        },
+        {
+          type: 'docSidebar',
+          sidebarId: 'developerGuideSidebar',
+          position: 'left',
+          label: 'Developer Guide',
         },
         {
           href: 'https://github.com/starlinerapp/starliner',
@@ -87,6 +93,10 @@ const config: Config = {
             {
               label: 'Getting started',
               to: '/',
+            },
+            {
+              label: 'Developer guide',
+              to: '/developer-guide',
             },
           ],
         },
