@@ -15,6 +15,15 @@ const sidebars: SidebarsConfig = {
         'user-manual/getting-started/preview-environments',
       ],
     },
+    {
+      type: 'category',
+      label: 'Custom Runners',
+      link: {
+        type: 'doc',
+        id: 'user-manual/custom-runners/index',
+      },
+      items: ['user-manual/custom-runners/self-hosted-runners'],
+    },
   ],
   developerGuideSidebar: [
     {
@@ -24,7 +33,7 @@ const sidebars: SidebarsConfig = {
         type: 'doc',
         id: 'developer-guide/index',
       },
-      items: ['developer-guide/self-hosted-runners'],
+      items: [],
     },
   ],
 };

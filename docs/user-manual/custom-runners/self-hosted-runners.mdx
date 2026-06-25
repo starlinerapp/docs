@@ -1,0 +1,49 @@
+---
+sidebar_position: 1
+title: Self-hosted runners
+description: Run image builds on your own infrastructure by connecting a self-hosted runner to Starliner.
+displayed_sidebar: userManualSidebar
+---
+
+Self-hosted runners let Starliner execute image builds on your own infrastructure instead of the platform's default build environment. The [Starliner runner](https://github.com/starlinerapp/runner) connects to your Starliner instance and picks up build jobs from your organization.
+
+## Create a runner
+
+1. Open the [Dashboard](https://starliner.app) → **Settings** → **Cluster** → **Runners**
+2. Click **New self-hosted runner**
+3. Click **Generate registration token** and copy the token — it is only shown once
+
+## Download and install
+
+Download the runner bundle for Linux (x64), install it, and point it at your Starliner instance:
+
+```bash
+# Download the runner bundle
+curl -LO https://github.com/starlinerapp/runner/releases/download/v0.0.1/runner-v0.0.1-linux-amd64.tar
+
+tar xf runner-v0.0.1-linux-amd64.tar
+cd runner-v0.0.1-linux-amd64
+./runner install --baseUrl https://starliner.app
+```
+
+Replace `https://starliner.app` with the URL of your Starliner instance if you are self-hosting.
+
+## Register and start
+
+Register the runner with the token from the dashboard, then enable the service:
+
+```bash
+sudo runner register --token <registration-token>
+
+sudo systemctl enable --now starliner-runner
+```
+
+Once the runner is online, Starliner will assign image build jobs to it automatically.
+
+## Supported platforms
+
+| Platform    | Architecture | Status      |
+| ----------- | ------------ | ----------- |
+| Linux       | x64          | Supported   |
+| macOS       | —            | Coming soon |
+| Windows     | —            | Coming soon |
