@@ -33,7 +33,7 @@ const sidebars: SidebarsConfig = {
         type: 'doc',
         id: 'developer-guide/index',
       },
-      items: [],
+      items: ['developer-guide/custom-runners'],
     },
   ],
 };

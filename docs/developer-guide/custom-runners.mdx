@@ -1,0 +1,259 @@
+---
+sidebar_position: 1
+title: Custom runners
+description: Architecture, development, and CLI reference for the Starliner runner.
+displayed_sidebar: developerGuideSidebar
+---
+
+import Mermaid from '@theme/Mermaid';
+
+Custom runners execute image builds on infrastructure you control. Starliner schedules build jobs to registered runners instead of using the platform's default build environment.
+
+The [Starliner runner](https://github.com/starlinerapp/runner) is the reference implementation. It clones a repository, builds a Dockerfile inside a Firecracker microVM, and pushes the resulting image to your container registry.
+
+For setup and registration steps, see the [self-hosted runners](/user-manual/custom-runners/self-hosted-runners) guide in the user manual.
+
+## Architecture
+
+When Starliner triggers an image build, it assigns the job to an online runner in your cluster. The runner:
+
+1. Receives the build definition (repository, branch, Dockerfile path, registry credentials)
+2. Clones the source repository
+3. Creates a Firecracker microVM with BuildKit
+4. Builds the container image inside the VM for isolation
+5. Tags the image with the cloned commit SHA and pushes it to the registry
+6. Reports build status and logs back to Starliner
+
+<Mermaid
+  value={`sequenceDiagram
+    participant Starliner
+    participant Runner
+    participant VM as Firecracker microVM
+    participant Registry
+
+    Starliner->>Runner: Assign build job
+    Runner->>Runner: Clone repository
+    Runner->>VM: Create microVM with BuildKit
+    VM->>VM: Build Dockerfile
+    Runner->>Registry: Push image with commit SHA tag
+    Runner->>Starliner: Report status and logs`}
+/>
+
+Builds run on the host with `sudo` because Firecracker requires elevated privileges to create and manage microVMs.
+
+## Requirements
+
+| Requirement | Notes |
+| ----------- | ----- |
+| Linux (amd64) | Required for Firecracker microVMs |
+| `sudo` | Required for install and builds |
+| KVM | Host must support hardware virtualization |
+
+macOS and Windows support is planned but not yet available.
+
+## Build from source
+
+Clone the repository and build a development bundle:
+
+```bash
+git clone https://github.com/starlinerapp/runner.git
+cd runner
+./scripts/build-bundle.sh
+cd dist/runner-dev-linux-amd64
+sudo ./runner install
+```
+
+Use `--cli-only` to rebuild the CLI without rebuilding the guest image:
+
+```bash
+./scripts/build-bundle.sh --cli-only
+```
+
+After `install`, the binary is available at `/usr/local/bin/runner`.
+
+## CLI reference
+
+### `runner install`
+
+Installs the CLI, VM assets, Firecracker, and BuildKit on the host. Run once per machine.
+
+```bash
+sudo ./runner install --baseUrl https://starliner.app
+```
+
+`--baseUrl` is required and stores the Starliner control plane URL for all subsequent API and gRPC calls. Use `runner build` instead if you only want to test local builds without connecting to Starliner.
+
+### `runner register`
+
+Registers the runner with your Starliner organization using a one-time token from the dashboard.
+
+```bash
+sudo runner register --token <registration-token>
+```
+
+After registration, enable the systemd service to keep the runner online:
+
+```bash
+sudo systemctl enable --now starliner-runner
+```
+
+### `runner build`
+
+Runs a standalone build without Starliner — useful for local development and debugging:
+
+```bash
+sudo runner build \
+  --repository https://github.com/org/app.git \
+  --branch-name main \
+  --github-token "$GITHUB_TOKEN" \
+  --image registry.example.com/app \
+  --registry-username "$REGISTRY_USER" \
+  --registry-password "$REGISTRY_PASSWORD"
+```
+
+Images are tagged with the cloned commit SHA.
+
+### `runner vm`
+
+Manage Firecracker microVMs directly:
+
+| Command | Description |
+| ------- | ----------- |
+| `runner vm create` | Create a microVM |
+| `runner vm list` | List running microVMs |
+| `runner vm delete <id>` | Remove a microVM |
+
+## Connecting to Starliner
+
+Connecting a runner involves three phases: configure the control plane URL, register with a one-time token, and start the daemon. After that, the runner maintains a persistent gRPC session to Starliner and polls for build jobs.
+
+For dashboard setup steps, see [self-hosted runners](/user-manual/custom-runners/self-hosted-runners) in the user manual.
+
+<Mermaid
+  value={`sequenceDiagram
+    participant Admin
+    participant Dashboard as Starliner API
+    participant Runner
+    participant Builder as Starliner Builder
+
+    Admin->>Dashboard: Generate registration token
+    Admin->>Runner: runner install --baseUrl
+    Admin->>Runner: runner register --token
+    Runner->>Dashboard: POST /api/runners/register
+    Dashboard-->>Runner: 201 Created
+  Note over Runner: credentials.json saved locally
+    Admin->>Runner: systemctl start starliner-runner
+    Runner->>Builder: gRPC StreamHeartbeats
+    loop Every ~5s
+      Runner->>Builder: heartbeat with capacity
+      Builder-->>Runner: ack with lease TTL
+    end
+    loop Every 2s
+      Runner->>Builder: ClaimJob
+      Builder-->>Runner: build job or empty
+    end`}
+/>
+
+### Phase 1: Configure the control plane URL
+
+`runner install --baseUrl <url>` normalizes and saves the Starliner instance URL to `config.json` under the runner's installed assets directory. Every later HTTP and gRPC call uses this URL to reach Starliner.
+
+The URL must use `http` or `https` and include a host. For `https://starliner.app`, gRPC connects to the same host on port 443.
+
+### Phase 2: Register with Starliner (HTTP)
+
+Registration is a one-time exchange over the public REST API:
+
+```http
+POST /api/runners/register
+Content-Type: application/json
+
+{
+  "token": "<registration-token>",
+  "name": "build-host-1",
+  "labels": ["self-hosted"],
+  "maxConcurrentJobs": 1
+}
+```
+
+The registration token is generated in the dashboard (**Settings → Cluster → Runners → Generate registration token**). It expires after one hour and can only be used once for registration. On success, Starliner:
+
+1. Marks the token as used and binds the runner record with the name, labels, and concurrency limit you provided
+2. Associates the runner with your organization (or registers it as a global runner for cluster-wide builds)
+
+The runner saves the token locally in `credentials.json` (mode `0600`). The same token is reused as the long-lived credential for all subsequent gRPC calls — it is sent in the `authorization` metadata header on every request.
+
+`runner register` prompts for `name` and `max-concurrent-jobs` if not passed as flags. Defaults are the `self-hosted` label and a concurrency limit of `1`.
+
+### Phase 3: Run the daemon
+
+The systemd unit runs `runner start`, which launches two concurrent loops against the Starliner **builder** service over gRPC (HTTP/2 on the same host as `--baseUrl`):
+
+| Loop | gRPC service | Purpose |
+| ---- | ------------ | ------- |
+| Heartbeat | `RunnerHeartbeatService.StreamHeartbeats` | Report liveness and capacity |
+| Job polling | `RunnerJobService.ClaimJob` | Pick up build jobs |
+
+Both connections authenticate with the registration token in the `authorization` metadata header.
+
+#### Heartbeats
+
+The runner opens a bidirectional gRPC stream and sends heartbeats containing:
+
+- `sequence` — monotonically increasing counter for ack matching
+- `max_concurrent_jobs` — configured capacity from registration
+- `active_jobs` — number of builds currently executing
+
+Starliner acknowledges each heartbeat with a `lease_ttl`. The default lease is **10 seconds**; the runner waits half that interval (~5 seconds) before sending the next heartbeat. Lease state is stored in Redis — if heartbeats stop, a background scheduler marks the runner **offline** and it will no longer receive new jobs.
+
+On disconnect, the runner reconnects with exponential backoff from 1 second up to 30 seconds.
+
+#### Job polling
+
+Every **2 seconds**, the runner calls `ClaimJob` if it has spare capacity (`active_jobs < max_concurrent_jobs`). Starliner fetches the next job from a per-runner NATS JetStream queue (`runner.job.<runnerId>`). An empty response means no work is available.
+
+When a job is claimed, the runner executes it in a background goroutine and streams output back through two unary RPCs:
+
+| RPC | Purpose |
+| --- | ------- |
+| `ReportBuildLog` | Stream build log chunks to the dashboard in real time |
+| `ReportBuildResult` | Send final status, commit SHA, image name, and tag |
+
+### How builds are assigned
+
+When a deployment triggers an image build, the builder service selects a runner before enqueueing the job:
+
+1. **Organization runners first** — runners registered to the project's organization
+2. **Global runners as fallback** — cluster-wide runners with no organization scope (created via the Starliner CLI for platform operators)
+
+Among eligible runners, Starliner picks the one with the lowest load ratio (`active_jobs / max_concurrent_jobs`). A runner is eligible only if it is:
+
+- Online (valid heartbeat lease in Redis)
+- Not deleted
+- Below its `max_concurrent_jobs` limit
+
+The selected job payload includes everything needed to build and push the image:
+
+| Field | Description |
+| ----- | ----------- |
+| `git_url`, `branch_name`, `access_token` | Source repository to clone |
+| `root_directory`, `dockerfile_path` | Build context within the repo |
+| `image_name`, `image_registry_url`, `registry_push_token` | Target registry and push credentials |
+| `args` | Docker build arguments |
+
+### Local state
+
+| File | Location | Contents |
+| ---- | -------- | -------- |
+| `config.json` | Runner assets directory | `base_url` set during `install` |
+| `registration.json` | Runner state directory | Registration token, name, and `maxConcurrentJobs` |
+
+### Network requirements
+
+The runner host needs outbound HTTPS access to your Starliner instance on port 443 (or port 80 for `http` URLs). gRPC traffic uses HTTP/2 on the same host — Starliner's ingress routes `/proto.v1.Runner*` paths to the builder service.
+
+No inbound ports need to be opened on the runner host. The runner initiates all connections.
+
+### Self-hosted and development instances
+
+For instances with self-signed TLS certificates, pass `--insecure-skip-tls-verify` to both `runner register` and `runner start` (or set it in the systemd unit's `ExecStart` flags).
