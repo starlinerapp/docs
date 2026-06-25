@@ -7,17 +7,6 @@ displayed_sidebar: userManualSidebar
 
 import DocCardList from '@theme/DocCardList';
 
-Run image builds on your own infrastructure by connecting custom runners to Starliner. Use self-hosted runners for a single organization, or global runners for cluster-wide builds managed via the Starliner CLI.
-
-## Local files
-
-The runner binary is installed to `/usr/local/bin/runner`. It stores files in two directories:
-
-| Directory | Path | Purpose |
-| --------- | ---- | ------- |
-| Assets | `/usr/local/share/runner` | VM images and `config.json` (written during `install`) |
-| State | `/root/.cache/runner` | `registration.json`, VM registry, and per-VM workspaces (written during `register` and at runtime) |
-
-The state directory is under `$HOME/.cache/runner`. The systemd service sets `HOME=/root`, so the default path is `/root/.cache/runner`.
+Run image builds on your own infrastructure by connecting custom runners to Starliner.
 
 <DocCardList />
