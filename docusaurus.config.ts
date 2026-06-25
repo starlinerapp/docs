@@ -70,7 +70,7 @@ const config: Config = {
           type: 'docSidebar',
           sidebarId: 'tutorialSidebar',
           position: 'left',
-          label: 'Tutorial',
+          label: 'User Manual',
         },
         {
           href: 'https://github.com/starlinerapp/starliner',
@@ -85,8 +85,8 @@ const config: Config = {
           title: 'Docs',
           items: [
             {
-              label: 'Tutorial',
-              to: '/quickStart',
+              label: 'Getting started',
+              to: '/',
             },
           ],
         },
@@ -100,7 +100,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Starliner. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Starliner.`,
     },
     prism: {
       theme: prismThemes.github,

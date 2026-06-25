@@ -1,8 +1,9 @@
 ---
 sidebar_position: 1
+title: Deploy your first application
+description: Step-by-step guide to deploying an application from GitHub using Starliner.
 ---
 
-# Quick start
 Starliner is a deployment platform that lets you easily deploy your application to the public cloud. (We only support Hetzner Cloud for the moment).
 In the following we will provide a quick guide on how to get started with the platform.
 
@@ -31,7 +32,7 @@ Starliner will now automatically build the Dockerfile and push it to our interna
 
 As a last step, we will deploy an ingress to make our service accessible from the internet.
 1. Fill in the ingress config.
-1. If you don’t have a custom domain yet, you can use a temporary nip.io domain based on your server IP, for example:
+1. If you don't have a custom domain yet, you can use a temporary nip.io domain based on your server IP, for example:
    `<server-ip>.nip.io` This resolves automatically to your server IP and allows Starliner to configure ingress without requiring DNS setup.
 1. Click on Deploy.
 ![App Ingress](/img/quickstart/deploy-app-ingress.png)
