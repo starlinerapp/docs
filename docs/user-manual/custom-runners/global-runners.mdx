@@ -45,3 +45,18 @@ sudo systemctl enable --now starliner-runner
 Replace `https://starliner.app` with the URL of your Starliner instance.
 
 Once the runner is online, Starliner can assign builds to it when no organization runner is available.
+
+## Stop a runner
+
+Stop the systemd service on the build host the same way as a [self-hosted runner](/user-manual/custom-runners/self-hosted-runners#stop-a-runner):
+
+```bash
+sudo systemctl stop starliner-runner
+sudo systemctl disable starliner-runner
+```
+
+To remove a global runner from Starliner entirely:
+
+```bash
+starliner runner delete-global <runner-id>
+```
