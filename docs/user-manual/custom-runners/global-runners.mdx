@@ -1,0 +1,47 @@
+---
+sidebar_position: 2
+title: Global runners
+description: Register cluster-wide runners using the Starliner administration CLI.
+displayed_sidebar: userManualSidebar
+---
+
+Global runners execute image builds for all projects. Unlike [self-hosted runners](/user-manual/custom-runners/self-hosted-runners), they are not scoped to a single organization. Starliner uses organization runners first and falls back to global runners when no org runner is available.
+
+Global runners are intended for platform operators managing a self-hosted Starliner instance. Registration tokens are created with the Starliner administration CLI.
+
+## Create a registration token
+
+Run the Starliner administration CLI in the `server-api` container from the `/app` directory:
+
+```bash
+starliner runner create-global
+```
+
+The command prints a one-time registration token and its expiry time. The token expires after one hour and can only be used once.
+
+To list or remove global runners later:
+
+```bash
+starliner runner list-global
+starliner runner delete-global <runner-id>
+```
+
+## Download, install, and register
+
+Install and register the [Starliner runner](https://github.com/starlinerapp/runner) on the build host the same way as a self-hosted runner. Use the token from the CLI instead of one generated in the dashboard:
+
+```bash
+# Download the runner bundle
+curl -LO https://github.com/starlinerapp/runner/releases/download/v0.0.1/runner-v0.0.1-linux-amd64.tar
+
+tar xf runner-v0.0.1-linux-amd64.tar
+cd runner-v0.0.1-linux-amd64
+./runner install --baseUrl https://starliner.app
+
+sudo runner register --token <registration-token>
+sudo systemctl enable --now starliner-runner
+```
+
+Replace `https://starliner.app` with the URL of your Starliner instance.
+
+Once the runner is online, Starliner can assign builds to it when no organization runner is available.

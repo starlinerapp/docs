@@ -36,6 +36,12 @@ const config: Config = {
     locales: ['en'],
   },
 
+  markdown: {
+    mermaid: true,
+  },
+
+  themes: ['@docusaurus/theme-mermaid'],
+
   presets: [
     [
       'classic',
@@ -68,9 +74,15 @@ const config: Config = {
       items: [
         {
           type: 'docSidebar',
-          sidebarId: 'tutorialSidebar',
+          sidebarId: 'userManualSidebar',
           position: 'left',
-          label: 'Tutorial',
+          label: 'User Manual',
+        },
+        {
+          type: 'docSidebar',
+          sidebarId: 'developerGuideSidebar',
+          position: 'left',
+          label: 'Developer Guide',
         },
         {
           href: 'https://github.com/starlinerapp/starliner',
@@ -85,8 +97,12 @@ const config: Config = {
           title: 'Docs',
           items: [
             {
-              label: 'Tutorial',
-              to: '/quickStart',
+              label: 'Getting started',
+              to: '/',
+            },
+            {
+              label: 'Developer guide',
+              to: '/developer-guide',
             },
           ],
         },
@@ -100,7 +116,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Starliner. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Starliner.`,
     },
     prism: {
       theme: prismThemes.github,
