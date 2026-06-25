@@ -199,6 +199,72 @@ For self-hosted instances with self-signed TLS, pass `--insecure-skip-tls-verify
 
 macOS and Windows support is planned but not yet available.
 
+### Nix guest image
+
+Each Firecracker microVM boots a minimal **NixOS** system defined in the runner repository's Nix flake. This guest image — the `buildkit-runner` NixOS configuration — provides BuildKit and the tooling needed to build Dockerfiles in isolation.
+
+#### What's inside
+
+The image is built from a small set of NixOS modules:
+
+| Module | Purpose |
+| ------ | ------- |
+| `nix/systems/buildkit-runner.nix` | Top-level NixOS configuration (kernel params, virtio drivers, SSH) |
+| `nix/modules/buildkit.nix` | BuildKit daemon with an OCI worker backed by `runc` |
+| `nix/modules/networking.nix` | Static guest IP from kernel cmdline (`runner.ipv4`, `runner.ipv4_gw`) |
+| `nix/modules/firecracker.nix` | `/init` symlink for NixOS activation inside the microVM |
+
+BuildKit listens on `unix:///run/buildkit/buildkitd.sock` inside the guest and on `tcp://0.0.0.0:1234` so the runner host can drive builds over the network. The guest also includes `git`, `curl`, and CA certificates for cloning repositories and pulling base images.
+
+When the runner provisions a microVM, it appends networking parameters to the base boot args:
+
+```
+runner.ipv4=172.16.<subnet>.2/24 runner.ipv4_gw=172.16.<subnet>.1
+```
+
+The host sets up a TAP interface and dnsmasq on `172.16.<subnet>.1`; the guest configures `eth0` from those kernel parameters before BuildKit starts.
+
+#### Flake outputs
+
+The flake at the root of the [runner repository](https://github.com/starlinerapp/runner) defines these Linux (`x86_64-linux`) packages:
+
+| Output | Artifact | Installed as |
+| ------ | -------- | ------------ |
+| `buildkit-runner-rootfs` | ext4 root filesystem | `rootfs.ext4` (compressed as `rootfs.ext4.zst` in release bundles) |
+| `buildkit-runner-vmlinux` | Linux kernel | `vmlinux` |
+| `buildkit-runner-initrd` | Initial ramdisk | `initrd` |
+| `buildkit-runner-bootargs` | Kernel command line | `boot.args` |
+
+`runner install` copies these assets to `/usr/local/share/runner`. Each microVM workspace symlinks them from that directory.
+
+#### Building the image
+
+Release bundles are built with `./scripts/build-bundle.sh`, which runs the Nix builds and packages the results:
+
+```bash
+nix build .#buildkit-runner-rootfs --out-link result-rootfs
+nix build .#buildkit-runner-vmlinux --out-link result-kernel
+nix build .#buildkit-runner-initrd --out-link result-initrd
+nix build .#buildkit-runner-bootargs --out-link result-bootargs
+```
+
+The rootfs is compressed with zstd and shipped as `rootfs.ext4.zst` in the bundle. `runner install` decompresses it to `rootfs.ext4` on the host.
+
+To iterate on guest image changes without rebuilding the Go CLI:
+
+```bash
+nix build .#buildkit-runner-rootfs
+# copy or symlink result/rootfs.img into your dev bundle, then re-run install
+```
+
+Use `./scripts/build-bundle.sh --cli-only` when you only changed Go code and want to skip the Nix builds.
+
+#### Customizing
+
+Edit the modules under `nix/modules/` or the system definition in `nix/systems/buildkit-runner.nix`, then rebuild the flake outputs. The runner repository includes a Nix dev shell (`direnv` + `flake.nix`) with Go and common build tools.
+
+Nix with flakes enabled is required to build guest image assets.
+
 ### Build from source
 
 ```bash

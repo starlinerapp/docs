@@ -40,6 +40,39 @@ sudo systemctl enable --now starliner-runner
 
 Once the runner is online, Starliner will assign image build jobs to it automatically.
 
+## Stop a runner
+
+### Stop the service
+
+To temporarily stop the runner from accepting new jobs:
+
+```bash
+sudo systemctl stop starliner-runner
+```
+
+Starliner marks the runner offline once heartbeats stop (within about 10 seconds). Any build already in progress will finish before the process exits.
+
+To prevent the runner from starting automatically on boot:
+
+```bash
+sudo systemctl disable starliner-runner
+```
+
+To start it again later:
+
+```bash
+sudo systemctl enable --now starliner-runner
+```
+
+### Remove from Starliner
+
+To permanently remove a runner from your organization:
+
+1. Open the [Dashboard](https://starliner.app) → **Settings** → **Cluster** → **Runners**
+2. Delete the runner from the list
+
+Starliner will no longer schedule builds to it. Stop and disable the systemd service on the build host if you are decommissioning the machine.
+
 ## Supported platforms
 
 | Platform    | Architecture | Status      |
